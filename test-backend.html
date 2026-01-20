@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sanchari Backend Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        button { background: #4CAF50; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #45a049; }
+        #result { margin-top: 20px; padding: 20px; background: #f9f9f9; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Sanchari Backend Connection Test</h1>
+        <p>This page tests if your browser can connect to the NestJS backend.</p>
+        
+        <button onclick="testBackend()">Test Backend Connection</button>
+        <button onclick="testTrip()">Test Trip Generation (Jaipur)</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        
+        function showResult(message, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.className = isError ? 'error' : 'success';
+        }
+        
+        async function testBackend() {
+            showResult('⏳ Testing backend connection...');
+            try {
+                const response = await fetch(`${API_URL}/`);
+                const data = await response.text();
+                showResult(`✅ SUCCESS! Backend is reachable\n\nResponse: ${data}`, false);
+            } catch (error) {
+                showResult(`❌ ERROR: Cannot connect to backend\n\n${error.message}\n\nMake sure backend is running:\ncd d:\\Sanchari\\backend\nnpm run start:dev`, true);
+            }
+        }
+        
+        async function testTrip() {
+            showResult('⏳ Testing trip generation for Jaipur...');
+            try {
+                const response = await fetch(`${API_URL}/trip/plan?destination=Jaipur&days=2&preferences=`);
+                const data = await response.json();
+                
+                if (data && data.destination) {
+                    const summary = `✅ SUCCESS! Trip Generated\n\n` +
+                        `📍 Destination: ${data.destination}\n` +
+                        `📅 Days: ${data.days}\n` +
+                        `📝 Description: ${data.cityInfo?.description?.substring(0, 100)}...\n` +
+                        `🏛️ Day 1 Places: ${data.itinerary[0]?.places.map(p => p.placeName).join(', ')}\n\n` +
+                        `Full Response:\n${JSON.stringify(data, null, 2)}`;
+                    showResult(summary, false);
+                } else {
+                    showResult(`⚠️ Backend responded but no trip data\n\n${JSON.stringify(data, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult(`❌ ERROR: ${error.message}\n\nBackend might not be running or CORS issue`, true);
+            }
+        }
+        
+        // Auto-test on page load
+        window.onload = () => testBackend();
+    </script>
+</body>
+</html>

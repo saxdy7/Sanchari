@@ -1,0 +1,188 @@
+// This is your Prisma schema file for Supabase PostgreSQL
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== USER & AUTH =====
+model User {
+  id          String   @id @default(uuid())
+  supabaseId  String   @unique  // Supabase auth.users.id
+  email       String?  @unique
+  name        String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  trips       Trip[]
+  savedSpots  SavedSpot[]
+  searches    SearchLog[]
+  guideViews  GuideView[]
+}
+
+// ===== TRIPS =====
+model Trip {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  destination String
+  state       String?        // Indian state
+  days        Int
+  startDate   DateTime?
+  endDate     DateTime?
+  preferences String[]       // ["Popular", "Nature", "Foodie"]
+  status      TripStatus     @default(PLANNED)
+  shareCode   String?        @unique  // 4-digit code for sharing
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  itinerary   ItineraryDay[]
+  
+  @@index([userId])
+  @@index([shareCode])
+}
+
+enum TripStatus {
+  PLANNED
+  ONGOING
+  COMPLETED
+}
+
+// ===== ITINERARY =====
+model ItineraryDay {
+  id          String         @id @default(uuid())
+  tripId      String
+  trip        Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayNumber   Int
+  date        DateTime?
+  
+  items       ItineraryItem[]
+  
+  @@unique([tripId, dayNumber])
+}
+
+model ItineraryItem {
+  id          String       @id @default(uuid())
+  dayId       String
+  day         ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  
+  spotId      String?
+  spot        Spot?        @relation(fields: [spotId], references: [id])
+  
+  placeName   String
+  category    SpotCategory
+  description String?
+  latitude    Float?
+  longitude   Float?
+  orderIndex  Int
+  duration    String?      // e.g. "2 hours"
+  distance    String?      // e.g. "5 km"
+  travelTime  String?      // e.g. "15 min"
+  
+  createdAt   DateTime @default(now())
+}
+
+// ===== SPOTS (Places of Interest) =====
+model Spot {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  category    SpotCategory
+  city        String
+  state       String
+  latitude    Float
+  longitude   Float
+  imageUrl    String?
+  source      String?      // "OSM", "Wikipedia", "User"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  savedBy     SavedSpot[]
+  itineraryItems ItineraryItem[]
+  
+  @@index([city])
+  @@index([category])
+}
+
+enum SpotCategory {
+  ATTRACTION
+  CAFE
+  RESTAURANT
+  ENTERTAINMENT
+  SHOPPING
+  NATURE
+  HISTORY
+  MUSEUM
+  OTHER
+}
+
+// ===== SAVED SPOTS (User's personal spots) =====
+model SavedSpot {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spotId    String
+  spot      Spot     @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, spotId])
+}
+
+// ===== ANALYTICS: Search Logs =====
+model SearchLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  query       String   // What the user searched
+  destination String?  // Which city they selected
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([destination])
+  @@index([createdAt])
+}
+
+// ===== ANALYTICS: Guide Views =====
+model GuideView {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  guideName   String   // e.g. "Jaipur 2-Day Guide"
+  destination String
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([destination])
+  @@index([createdAt])
+}
+
+// ===== TRAVEL GUIDES (Pre-defined templates) =====
+model TravelGuide {
+  id          String   @id @default(uuid())
+  destination String
+  state       String
+  days        Int
+  spotsCount  Int
+  description String?
+  imageUrl    String?
+  isPopular   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([destination])
+  @@index([isPopular])
+}
