@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sarvam_ai_service.dart';
+import '../config/api_config.dart';
 
 // Provider
 final tripApiServiceProvider = Provider<TripApiService>((ref) {
@@ -39,25 +40,12 @@ class TripApiService {
     _aiService = SarvamAIService();
   }
 
-  // Use localhost:3000 for web, computer's IP for physical device
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000';
-    }
-    // For physical Android device - use your computer's local IP
-    return 'http://192.168.31.156:3000';
-  }
-
   late final Dio _dio =
       Dio(
           BaseOptions(
-            baseUrl: baseUrl,
-            connectTimeout: const Duration(
-              seconds: 90,
-            ), // Increased for trip generation with multiple API calls
-            receiveTimeout: const Duration(
-              seconds: 120,
-            ), // Increased for large responses
+            baseUrl: ApiConfig.baseUrl, // Use config instead of hardcoded IP
+            connectTimeout: ApiConfig.connectTimeout,
+            receiveTimeout: ApiConfig.receiveTimeout,
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',

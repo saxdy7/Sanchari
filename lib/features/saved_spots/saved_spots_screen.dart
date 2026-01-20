@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'spot_detail_screen.dart';
 import 'search_spots_screen.dart';
 import '../../services/database_service.dart';
+import '../../utils/logger.dart';
+import '../../utils/constants.dart';
 
 // Sample saved spot model
 class SavedSpot {
@@ -56,8 +59,11 @@ final savedSpotsProvider = StreamProvider.autoDispose<List<SavedSpot>>((
 
   // Initial load
   final initialData = await dbService.getSavedSpots();
-  debugPrint('🔍 Initial load: ${initialData.length} spots');
+  Logger.debug('Initial load: ${initialData.length} spots');
   yield _processSpotsData(initialData);
+
+  // Create StreamController for real-time updates
+  final controller = StreamController<List<SavedSpot>>();
 
   // Subscribe to real-time changes
   final channel = Supabase.instance.client
@@ -72,57 +78,61 @@ final savedSpotsProvider = StreamProvider.autoDispose<List<SavedSpot>>((
           value: user.id,
         ),
         callback: (payload) async {
-          debugPrint('🔄 Real-time update detected: ${payload.eventType}');
+          Logger.info('Real-time update detected: ${payload.eventType}');
           final updatedData = await dbService.getSavedSpots();
-          debugPrint('✅ Refreshed: ${updatedData.length} spots');
+          Logger.success('Refreshed: ${updatedData.length} spots');
+          // Yield the updated data through the controller
+          controller.add(_processSpotsData(updatedData));
         },
       )
       .subscribe();
 
-  // Listen to database changes and refresh
-  await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
-    final spotsData = await dbService.getSavedSpots();
-    yield _processSpotsData(spotsData);
-  }
+  // Yield from the controller stream (real-time updates only, no polling!)
+  yield* controller.stream;
 
   // Cleanup on dispose
   ref.onDispose(() {
-    debugPrint('🧹 Cleaning up real-time subscription');
+    Logger.info('Cleaning up real-time subscription');
     channel.unsubscribe();
+    controller.close();
   });
 });
 
 List<SavedSpot> _processSpotsData(List<Map<String, dynamic>> spotsData) {
-  debugPrint('🔍 Processing ${spotsData.length} spots from database');
+  Logger.debug('Processing ${spotsData.length} spots from database');
 
   final spots = <SavedSpot>[];
 
   for (var data in spotsData) {
     try {
-      debugPrint('📦 Raw data: $data');
+      Logger.debug('Raw data: $data');
 
       // Get spot data from the 'spots' key
       if (!data.containsKey('spots') || data['spots'] == null) {
-        debugPrint('⚠️ No spot data found in item, skipping');
-        debugPrint('Available keys: ${data.keys.toList()}');
+        Logger.warning('No spot data found in item, skipping');
+        Logger.debug('Available keys: ${data.keys.toList()}');
         continue;
       }
 
       final spot = data['spots'] as Map<String, dynamic>;
       final savedSpotId = data['id'] as String; // Get the saved_spots table ID
-      debugPrint('🎯 Spot data: $spot');
+      Logger.debug('Spot data: $spot');
+
+      // Validate critical data before creating SavedSpot
+      if (spot['latitude'] == null || spot['longitude'] == null) {
+        Logger.warning('Skipping spot with missing coordinates: ${spot['name']}');
+        continue;
+      }
 
       spots.add(
         SavedSpot(
           savedSpotId: savedSpotId,
-          name: spot['name'] ?? 'Unknown',
-          city: spot['city'] ?? '',
-          state: spot['state'] ?? '',
+          name: spot['name'] ?? 'Unknown Location',
+          city: spot['city'] ?? 'Unknown City',
+          state: spot['state'] ?? 'Unknown State',
           country: 'India', // Default as not stored in DB
-          description: spot['description'] ?? 'Saved from search',
-          imageUrl:
-              spot['image_url'] ??
-              'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800',
+          description: spot['description'] ?? 'No description available',
+          imageUrl: spot['image_url'] ?? AppConstants.fallbackSpotImage,
           latitude: (spot['latitude'] as num).toDouble(),
           longitude: (spot['longitude'] as num).toDouble(),
           category: spot['category'] ?? 'Other',
@@ -131,12 +141,11 @@ List<SavedSpot> _processSpotsData(List<Map<String, dynamic>> spotsData) {
         ),
       );
     } catch (e, stack) {
-      debugPrint('❌ Error parsing spot: $e');
-      debugPrint('Stack: $stack');
+      Logger.error('Error parsing spot', e, stack);
     }
   }
 
-  debugPrint('✅ Successfully converted ${spots.length} spots');
+  Logger.success('Successfully converted ${spots.length} spots');
   return spots;
 }
 
@@ -209,14 +218,16 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
                           savedSpots.first.latitude,
                           savedSpots.first.longitude,
                         )
-                      : const LatLng(20.5937, 78.9629),
-                  initialZoom: 5,
+                      : const LatLng(
+                          AppConstants.defaultMapLatitude,
+                          AppConstants.defaultMapLongitude,
+                        ),
+                  initialZoom: AppConstants.defaultMapZoom,
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.sanchari.app',
+                    urlTemplate: AppConstants.osmTileUrl,
+                    userAgentPackageName: AppConstants.mapUserAgent,
                   ),
                   MarkerLayer(
                     markers: savedSpots.map((spot) {

@@ -42,6 +42,19 @@ let TripPlannerService = class TripPlannerService {
         this.sarvamService = sarvamService;
         this.routingService = routingService;
         this.configService = configService;
+        setInterval(() => {
+            const now = Date.now();
+            let cleanedCount = 0;
+            for (const [key, value] of this.cache.entries()) {
+                if (value.expires < now) {
+                    this.cache.delete(key);
+                    cleanedCount++;
+                }
+            }
+            if (cleanedCount > 0) {
+                console.log(`🧹 Cleaned up ${cleanedCount} expired cache entries`);
+            }
+        }, 10 * 60 * 1000);
     }
     async generateTrip(destination, days, preferences = []) {
         const cacheKey = `${destination.toLowerCase()}-${days}-${preferences.sort().join(',')}`;

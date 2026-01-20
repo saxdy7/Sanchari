@@ -61,7 +61,24 @@ export class TripPlannerService {
         private readonly sarvamService: SarvamService,
         private readonly routingService: RoutingService,
         private configService: ConfigService,
-    ) { }
+    ) {
+        // Clean up expired cache entries every 10 minutes to prevent memory leaks
+        setInterval(() => {
+            const now = Date.now();
+            let cleanedCount = 0;
+
+            for (const [key, value] of this.cache.entries()) {
+                if (value.expires < now) {
+                    this.cache.delete(key);
+                    cleanedCount++;
+                }
+            }
+
+            if (cleanedCount > 0) {
+                console.log(`🧹 Cleaned up ${cleanedCount} expired cache entries`);
+            }
+        }, 10 * 60 * 1000);
+    }
 
     async generateTrip(
         destination: string,
@@ -86,7 +103,7 @@ export class TripPlannerService {
 
         // 2. Get nearby tourist spots from Sarvam AI (Overpass API disabled for now)
         console.log('⚡ Fetching spots from Sarvam AI...');
-        
+
         // OVERPASS API - DISABLED FOR NOW (uncomment to re-enable)
         /*
         const [overpassResult, sarvamResult] = await Promise.allSettled([
@@ -134,14 +151,14 @@ export class TripPlannerService {
             }
         }
         */
-        
+
         // USE ONLY SARVAM AI
         const sarvamSpots = await this.sarvamService.discoverTouristSpots(destination, preferences);
-        
+
         // Remove duplicates by place name (case-insensitive)
         const uniqueSpots: Array<{ name: string; category: string; lat: number; lon: number }> = [];
         const seenNames = new Set<string>();
-        
+
         for (const spot of sarvamSpots) {
             const sarvamPlace = {
                 name: spot.name,
@@ -149,18 +166,18 @@ export class TripPlannerService {
                 lat: coords.lat,
                 lon: coords.lon,
             };
-            
+
             const normalizedName = sarvamPlace.name.toLowerCase().trim();
             if (!seenNames.has(normalizedName)) {
                 seenNames.add(normalizedName);
                 uniqueSpots.push(sarvamPlace);
             }
         }
-        
+
         console.log(`🔍 Sarvam returned ${sarvamSpots.length} spots, ${uniqueSpots.length} unique`);
         let spots = uniqueSpots;
         console.log(`✅ Using ${spots.length} Sarvam-discovered spots`);
-        
+
         console.log(`📍 Total spots from parallel fetch: ${spots.length}`);
 
         // Fallback: Use local data if Overpass API fails or returns 0 results
@@ -208,14 +225,14 @@ export class TripPlannerService {
 
         // 4 & 5. Fetch images from Wikipedia + Pixabay and city info
         console.log('Fetching images and city info (Wikipedia + Pixabay)...');
-        
+
         const [placesWithImages, cityWiki] = await Promise.all([
             this.enrichPlacesWithImages(enrichedPlaces, destination),
             this.wikipediaService.getCityInfo(destination),
         ]);
 
         // Map Wikipedia result to TripResponse cityInfo format
-        const cityInfo = cityWiki 
+        const cityInfo = cityWiki
             ? { description: cityWiki.extract, imageUrl: cityWiki.imageUrl }
             : { description: `Explore ${destination}, India.`, imageUrl: undefined };
 
@@ -305,7 +322,7 @@ export class TripPlannerService {
     // Get trip by share code
     async getTripByShareCode(code: string): Promise<TripResponse | null> {
         const shared = this.sharedTrips.get(code.toUpperCase());
-        
+
         if (!shared) {
             return null;
         }
@@ -515,13 +532,13 @@ Return ONLY valid JSON in this format:
     async getPlaceInfo(name: string, city?: string) {
         try {
             console.log(`📍 Fetching comprehensive place info for: ${name}${city ? ` in ${city}` : ''}`);
-            
+
             // Fetch Wikipedia info
             const wikiInfo = await this.wikipediaService.getPlaceInfo(name, city);
             let imageUrl = wikiInfo?.imageUrl || null;
             let description = wikiInfo?.extract || '';
             const pageUrl = wikiInfo?.pageUrl || null;
-            
+
             // Try Pixabay as fallback if Wikipedia has no image
             if (!imageUrl) {
                 console.log(`🔍 Wikipedia image not found, trying Pixabay for ${name}`);
@@ -531,7 +548,7 @@ Return ONLY valid JSON in this format:
                     console.log(`✅ Found Pixabay image for ${name}`);
                 }
             }
-            
+
             // Fetch AI-generated historical description from Sarvam AI
             let aiDescription = '';
             try {
@@ -542,12 +559,12 @@ Return ONLY valid JSON in this format:
             } catch (aiError) {
                 console.log(`⚠️ Could not fetch AI description: ${aiError.message}`);
             }
-            
+
             // Combine descriptions: Wikipedia extract + AI historical context
-            const combinedDescription = aiDescription 
+            const combinedDescription = aiDescription
                 ? (description ? `${description}\n\n${aiDescription}` : aiDescription)
                 : description;
-            
+
             console.log(`✅ Comprehensive info gathered for ${name}`);
             return {
                 title: wikiInfo?.title || name,

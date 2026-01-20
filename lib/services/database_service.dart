@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../main.dart';
+import '../utils/logger.dart';
+import '../utils/constants.dart';
 
 class DatabaseService {
   // ===== TRIPS =====
@@ -80,7 +82,7 @@ class DatabaseService {
     required double longitude,
   }) async {
     try {
-      debugPrint('🔍 Saving spot: $name at ($latitude, $longitude)');
+      Logger.debug('Saving spot: $name at ($latitude, $longitude)');
 
       // Step 1: Check if spot already exists (use limit to avoid multiple row error)
       final existingSpots = await supabase
@@ -94,7 +96,7 @@ class DatabaseService {
 
       if (existingSpots.isNotEmpty) {
         spotId = existingSpots.first['id'];
-        debugPrint('✅ Found existing spot: $spotId');
+        Logger.success('Found existing spot: $spotId');
       } else {
         // Create new spot (without country field - doesn't exist in DB)
         final spotData = {
@@ -114,7 +116,7 @@ class DatabaseService {
             .single();
 
         spotId = spotResponse['id'];
-        debugPrint('✅ Created new spot: $spotId');
+        Logger.success('Created new spot: $spotId');
       }
 
       // Step 2: Check if already saved by this user
@@ -126,7 +128,7 @@ class DatabaseService {
           .maybeSingle();
 
       if (alreadySaved != null) {
-        debugPrint('⚠️ Spot already saved by user');
+        Logger.warning('Spot already saved by user');
         return {
           'success': true,
           'alreadySaved': true,
@@ -140,15 +142,14 @@ class DatabaseService {
         'spot_id': spotId,
       });
 
-      debugPrint('✅ Successfully saved spot!');
+      Logger.success('Successfully saved spot!');
       return {
         'success': true,
         'alreadySaved': false,
         'message': 'Spot saved successfully!',
       };
     } catch (e, stack) {
-      debugPrint('❌ Error saving spot: $e');
-      debugPrint('Stack: $stack');
+      Logger.error('Error saving spot', e, stack);
       return {
         'success': false,
         'alreadySaved': false,
@@ -168,8 +169,8 @@ class DatabaseService {
     String? description,
   }) async {
     try {
-      debugPrint('🔍 Saving spot with image: $name at ($latitude, $longitude)');
-      debugPrint('🖼️ Image URL: ${imageUrl ?? "None"}');
+      Logger.debug('Saving spot with image: $name at ($latitude, $longitude)');
+      Logger.debug('Image URL: ${imageUrl ?? "None"}');
 
       // Step 1: Check if spot already exists
       final existingSpots = await supabase
@@ -183,7 +184,7 @@ class DatabaseService {
 
       if (existingSpots.isNotEmpty) {
         spotId = existingSpots.first['id'];
-        debugPrint('✅ Found existing spot: $spotId');
+        Logger.success('Found existing spot: $spotId');
 
         // Update existing spot with image if provided
         if (imageUrl != null) {
@@ -194,7 +195,7 @@ class DatabaseService {
                 if (description != null) 'description': description,
               })
               .eq('id', spotId);
-          debugPrint('✅ Updated existing spot with Wikipedia image');
+          Logger.success('Updated existing spot with Wikipedia image');
         }
       } else {
         // Create new spot with image
@@ -216,7 +217,7 @@ class DatabaseService {
             .single();
 
         spotId = spotResponse['id'];
-        debugPrint('✅ Created new spot with Wikipedia image: $spotId');
+        Logger.success('Created new spot with Wikipedia image: $spotId');
       }
 
       // Step 2: Check if already saved by this user
@@ -228,7 +229,7 @@ class DatabaseService {
           .maybeSingle();
 
       if (alreadySaved != null) {
-        debugPrint('⚠️ Spot already saved by user');
+        Logger.warning('Spot already saved by user');
         return {
           'success': true,
           'alreadySaved': true,
@@ -242,15 +243,14 @@ class DatabaseService {
         'spot_id': spotId,
       });
 
-      debugPrint('✅ Successfully saved spot with Wikipedia data!');
+      Logger.success('Successfully saved spot with Wikipedia data!');
       return {
         'success': true,
         'alreadySaved': false,
         'message': 'Spot saved successfully with image!',
       };
     } catch (e, stack) {
-      debugPrint('❌ Error saving spot: $e');
-      debugPrint('Stack: $stack');
+      Logger.error('Error saving spot', e, stack);
       return {
         'success': false,
         'alreadySaved': false,
@@ -262,11 +262,11 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getSavedSpots() async {
     final user = supabase.auth.currentUser;
     if (user == null) {
-      debugPrint('❌ No user logged in');
+      Logger.error('No user logged in');
       return [];
     }
 
-    debugPrint('✅ Fetching saved spots for user: ${user.id}');
+    Logger.debug('Fetching saved spots for user: ${user.id}');
 
     try {
       // Query with proper join - spots is the foreign key reference
@@ -276,33 +276,32 @@ class DatabaseService {
           .eq('user_id', user.id)
           .order('created_at', ascending: false);
 
-      debugPrint('📊 Saved spots raw response: $response');
-      debugPrint('📊 Response type: ${response.runtimeType}');
-      debugPrint('📊 Number of spots: ${response.length}');
+      Logger.debug('Saved spots raw response: $response');
+      Logger.debug('Response type: ${response.runtimeType}');
+      Logger.debug('Number of spots: ${response.length}');
 
       // Log first item to see structure
       if (response.isNotEmpty) {
-        debugPrint('📦 First item structure: ${response.first}');
-        debugPrint('📦 Keys: ${(response.first as Map).keys.toList()}');
+        Logger.debug('First item structure: ${response.first}');
+        Logger.debug('Keys: ${(response.first as Map).keys.toList()}');
       }
 
-      debugPrint('🔍 Processing ${response.length} spots from database');
+      Logger.debug('Processing ${response.length} spots from database');
 
       if (response.isEmpty) {
-        debugPrint('! No saved spots found for this user');
+        Logger.info('No saved spots found for this user');
       } else {
         for (var item in response) {
-          debugPrint(
-            '  - Saved spot ID: ${item['id']}, Spot data: ${item['spots']}',
+          Logger.debug(
+            'Saved spot ID: ${item['id']}, Spot data: ${item['spots']}',
           );
         }
       }
 
-      debugPrint('✅ Successfully parsed ${response.length} spots');
+      Logger.success('Successfully parsed ${response.length} spots');
       return List<Map<String, dynamic>>.from(response);
     } catch (e, stack) {
-      debugPrint('❌ Error fetching saved spots: $e');
-      debugPrint('Stack trace: $stack');
+      Logger.error('Error fetching saved spots', e, stack);
       return [];
     }
   }
@@ -310,12 +309,12 @@ class DatabaseService {
   Future<bool> deleteSavedSpot(String savedSpotId) async {
     final user = supabase.auth.currentUser;
     if (user == null) {
-      debugPrint('❌ No user logged in');
+      Logger.error('No user logged in');
       return false;
     }
 
     try {
-      debugPrint('🗑️ Deleting saved spot: $savedSpotId');
+      Logger.debug('Deleting saved spot: $savedSpotId');
 
       await supabase
           .from('saved_spots')
@@ -326,10 +325,10 @@ class DatabaseService {
             user.id,
           ); // Ensure user can only delete their own saved spots
 
-      debugPrint('✅ Saved spot deleted successfully');
+      Logger.success('Saved spot deleted successfully');
       return true;
     } catch (e) {
-      debugPrint('❌ Error deleting saved spot: $e');
+      Logger.error('Error deleting saved spot', e);
       return false;
     }
   }
