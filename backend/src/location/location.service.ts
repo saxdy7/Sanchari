@@ -108,15 +108,15 @@ export class LocationService {
             const query = `
                 [out:json][timeout:25];
                 (
-                  node["tourism"~"attraction|museum|viewpoint|zoo|theme_park"]["name"](around:50000,${lat},${lon});
-                  way["tourism"~"attraction|museum|viewpoint|zoo|theme_park"]["name"](around:50000,${lat},${lon});
-                  relation["tourism"~"attraction|museum|viewpoint|zoo|theme_park"]["name"](around:50000,${lat},${lon});
-                  node["historic"~"monument|memorial|castle|fort|ruins"]["name"](around:50000,${lat},${lon});
-                  way["historic"~"monument|memorial|castle|fort|ruins"]["name"](around:50000,${lat},${lon});
-                  relation["historic"~"monument|memorial|castle|fort|ruins"]["name"](around:50000,${lat},${lon});
-                  node["religion"~"place_of_worship"]["name"](around:50000,${lat},${lon});
-                  way["religion"~"place_of_worship"]["name"](around:50000,${lat},${lon});
-                  relation["religion"~"place_of_worship"]["name"](around:50000,${lat},${lon});
+                  node["tourism"~"attraction|museum|viewpoint|zoo|theme_park"]["name"](around:10000,${lat},${lon});
+                  way["tourism"~"attraction|museum|viewpoint|zoo|theme_park"]["name"](around:10000,${lat},${lon});
+                  relation["tourism"~"attraction|museum|viewpoint|zoo|theme_park"]["name"](around:10000,${lat},${lon});
+                  node["historic"~"monument|memorial|castle|fort|ruins"]["name"](around:10000,${lat},${lon});
+                  way["historic"~"monument|memorial|castle|fort|ruins"]["name"](around:10000,${lat},${lon});
+                  relation["historic"~"monument|memorial|castle|fort|ruins"]["name"](around:10000,${lat},${lon});
+                  node["religion"~"place_of_worship"]["name"](around:10000,${lat},${lon});
+                  way["religion"~"place_of_worship"]["name"](around:10000,${lat},${lon});
+                  relation["religion"~"place_of_worship"]["name"](around:10000,${lat},${lon});
                 );
                 out center;
             `;
