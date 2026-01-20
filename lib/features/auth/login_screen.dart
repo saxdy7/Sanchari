@@ -14,12 +14,43 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _error;
 
+  // Email validation
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Email is required';
+    }
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  // Password validation
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password is required';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
+  }
+
   Future<void> _signIn() async {
+    // Validate form before proceeding
+    if (!_formKey.currentState!.validate()) {
+      return; // Stop if validation fails
+    }
+
+    if (_isLoading) return; // Prevent double submission
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -125,9 +156,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 60),
@@ -179,9 +212,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ],
 
               // Email Field
-              TextField(
+              TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                validator: _validateEmail,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: InputDecoration(
                   labelText: 'Email',
                   hintText: 'you@example.com',
@@ -189,20 +224,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   prefixIcon: const Icon(Icons.email_outlined),
+                  errorMaxLines: 2,
                 ),
               ),
               const SizedBox(height: 16),
 
               // Password Field
-              TextField(
+              TextFormField(
                 controller: _passwordController,
                 obscureText: true,
+                validator: _validatePassword,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   prefixIcon: const Icon(Icons.lock_outline),
+                  errorMaxLines: 2,
                 ),
               ),
               const SizedBox(height: 24),
@@ -320,6 +359,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

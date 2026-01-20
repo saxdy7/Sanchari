@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 
 interface WikipediaResult {
@@ -10,6 +10,7 @@ interface WikipediaResult {
 
 @Injectable()
 export class WikipediaService {
+    private readonly logger = new Logger(WikipediaService.name);
     private readonly searchUrl = 'https://en.wikipedia.org/w/api.php';
 
     async getPlaceInfo(placeName: string, city?: string): Promise<WikipediaResult | null> {
@@ -52,7 +53,7 @@ export class WikipediaService {
                 pageUrl: page.fullurl || '',
             };
         } catch (error) {
-            console.error(`Wikipedia error for "${placeName}":`, error.message);
+            this.logger.error(`Wikipedia error for "${placeName}": ${error.message}`);
             return null;
         }
     }
@@ -114,7 +115,7 @@ export class WikipediaService {
                 pageUrl: page.fullurl || '',
             };
         } catch (error) {
-            console.error(`Wikipedia search error:`, error.message);
+            this.logger.error(`Wikipedia search error: ${error.message}`);
             return null;
         }
     }
@@ -126,16 +127,33 @@ export class WikipediaService {
     async getMultiplePlaceInfo(places: string[], city: string): Promise<Map<string, WikipediaResult>> {
         const results = new Map<string, WikipediaResult>();
 
-        // Fetch sequentially with small delays to avoid rate limiting
-        for (const place of places) {
-            const info = await this.getPlaceInfo(place, city);
-            if (info) {
-                results.set(place, info);
-            }
-            // Small delay between requests
+        // Process in chunks of 5 concurrent requests to improve performance
+        const chunks = this.chunkArray(places, 5);
+
+        for (const chunk of chunks) {
+            const chunkResults = await Promise.all(
+                chunk.map(place => this.getPlaceInfo(place, city).catch(() => null))
+            );
+
+            chunk.forEach((place, i) => {
+                if (chunkResults[i]) {
+                    results.set(place, chunkResults[i]);
+                }
+            });
+
+            // Rate limit: 100ms between chunks
             await new Promise(resolve => setTimeout(resolve, 100));
         }
 
+        this.logger.log(`Fetched Wikipedia info for ${results.size}/${places.length} places`);
         return results;
+    }
+
+    private chunkArray<T>(array: T[], size: number): T[][] {
+        const chunks: T[][] = [];
+        for (let i = 0; i < array.length; i += size) {
+            chunks.push(array.slice(i, i + size));
+        }
+        return chunks;
     }
 }

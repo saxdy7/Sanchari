@@ -76,7 +76,7 @@ export class LocationService {
             });
 
             if (response.data.length > 0) {
-                console.log(`Found coordinates for ${placeName}: ${response.data[0].lat}, ${response.data[0].lon}`);
+                this.logger.log(`Found coordinates for ${placeName}: ${response.data[0].lat}, ${response.data[0].lon}`);
                 return {
                     lat: parseFloat(response.data[0].lat),
                     lon: parseFloat(response.data[0].lon),

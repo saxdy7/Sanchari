@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
 @Injectable()
 export class SarvamService {
+    private readonly logger = new Logger(SarvamService.name);
     private readonly SARVAM_API_KEY: string;
     private readonly BASE_URL = 'https://api.sarvam.ai';
 
@@ -14,7 +15,7 @@ export class SarvamService {
     async discoverTouristSpots(destination: string, preferences: string[] = []): Promise<any[]> {
         try {
             if (!this.SARVAM_API_KEY) {
-                console.warn('⚠️ Sarvam API key not configured. Skipping...');
+                this.logger.warn('Sarvam API key not configured. Skipping...');
                 return [];
             }
 
@@ -63,24 +64,24 @@ Return ONLY valid JSON array:
 
             const content = response.data.choices[0].message.content;
             let cleaned = content.trim();
-            
+
             // Remove markdown code blocks if present
             if (cleaned.startsWith('```')) {
                 cleaned = cleaned.replace(/```json?\n?/g, '').replace(/```/g, '');
             }
 
             const places = JSON.parse(cleaned);
-            
+
             if (!Array.isArray(places)) {
-                console.error('Sarvam response is not an array');
+                this.logger.error('Sarvam response is not an array');
                 return [];
             }
 
-            console.log(`✅ Sarvam discovered ${places.length} places`);
+            this.logger.log(`Sarvam discovered ${places.length} places`);
             return places;
 
         } catch (error) {
-            console.error(`❌ Sarvam discovery error: ${error.message}`);
+            this.logger.error(`Sarvam discovery error: ${error.message}`, error.stack);
             return [];
         }
     }
@@ -117,7 +118,7 @@ Return ONLY valid JSON array:
 
             return response.data.choices[0].message.content.trim();
         } catch (error) {
-            console.error(`Sarvam enrichment error for ${placeName}: ${error.message}`);
+            this.logger.error(`Sarvam enrichment error for ${placeName}: ${error.message}`);
             return '';
         }
     }
@@ -125,11 +126,11 @@ Return ONLY valid JSON array:
     async getLocationContext(locationName: string): Promise<string> {
         try {
             if (!this.SARVAM_API_KEY) {
-                console.warn('⚠️ Sarvam API key not configured for location context');
+                this.logger.warn('Sarvam API key not configured for location context');
                 return '';
             }
 
-            console.log(`🤖 Fetching AI historical context for: ${locationName}`);
+            this.logger.log(`Fetching AI historical context for: ${locationName}`);
 
             const response = await axios.post(
                 `${this.BASE_URL}/v1/chat/completions`,
@@ -164,11 +165,11 @@ Keep it engaging and informative.`,
             );
 
             const context = response.data.choices[0].message.content.trim();
-            console.log(`✅ Got AI context for ${locationName} (${context.length} chars)`);
+            this.logger.log(`Got AI context for ${locationName} (${context.length} chars)`);
             return context;
 
         } catch (error) {
-            console.error(`❌ Sarvam location context error for ${locationName}: ${error.message}`);
+            this.logger.error(`Sarvam location context error for ${locationName}: ${error.message}`, error.stack);
             return '';
         }
     }

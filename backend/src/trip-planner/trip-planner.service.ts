@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LocationService } from '../location/location.service';
 import { GroqService } from '../groq/groq.service';
@@ -53,6 +53,8 @@ export class TripPlannerService {
     private sharedTrips = new Map<string, SharedTrip>();
     private readonly SHARE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
+    private readonly logger = new Logger(TripPlannerService.name);
+
     constructor(
         private readonly locationService: LocationService,
         private readonly groqService: GroqService,
@@ -75,7 +77,7 @@ export class TripPlannerService {
             }
 
             if (cleanedCount > 0) {
-                console.log(`🧹 Cleaned up ${cleanedCount} expired cache entries`);
+                this.logger.log(`Cleaned up ${cleanedCount} expired cache entries`);
             }
         }, 10 * 60 * 1000);
     }
@@ -89,11 +91,11 @@ export class TripPlannerService {
         const cacheKey = `${destination.toLowerCase()}-${days}-${preferences.sort().join(',')}`;
         const cached = this.cache.get(cacheKey);
         if (cached && cached.expires > Date.now()) {
-            console.log(`✅ Cache HIT for ${destination}`);
+            this.logger.log(`Cache HIT for ${destination}`);
             return cached.data;
         }
 
-        console.log(`Generating trip for ${destination}, ${days} days`);
+        this.logger.log(`Generating trip for ${destination}, ${days} days`);
 
         // 1. Get destination coordinates
         const coords = await this.locationService.getCoordinates(destination);
@@ -102,7 +104,7 @@ export class TripPlannerService {
         }
 
         // 2. Get nearby tourist spots from Sarvam AI (Overpass API disabled for now)
-        console.log('⚡ Fetching spots from Sarvam AI...');
+        this.logger.log('⚡ Fetching spots from Sarvam AI...');
 
         // OVERPASS API - DISABLED FOR NOW (uncomment to re-enable)
         /*
@@ -116,7 +118,7 @@ export class TripPlannerService {
         // Merge results from both sources
         if (overpassResult.status === 'fulfilled' && overpassResult.value.length > 0) {
             spots = overpassResult.value;
-            console.log(`✅ Overpass returned ${spots.length} spots`);
+            this.logger.log(`✅ Overpass returned ${spots.length} spots`);
         }
         
         if (sarvamResult.status === 'fulfilled' && sarvamResult.value.length > 0) {
@@ -139,15 +141,15 @@ export class TripPlannerService {
                 }
             }
             
-            console.log(`🔍 Sarvam returned ${sarvamSpots.length} spots, ${uniqueSpots.length} unique`);
+            this.logger.log(`🔍 Sarvam returned ${sarvamSpots.length} spots, ${uniqueSpots.length} unique`);
             
             // Prefer Sarvam AI spots (they're curated for the city)
             // Only use Overpass if it has significantly more spots
             if (spots.length < 15) {
-                console.log(`✅ Using ${uniqueSpots.length} Sarvam-discovered spots (better quality)`);
+                this.logger.log(`✅ Using ${uniqueSpots.length} Sarvam-discovered spots (better quality)`);
                 spots = uniqueSpots;
             } else {
-                console.log(`✅ Using ${spots.length} Overpass spots (sufficient coverage)`);
+                this.logger.log(`✅ Using ${spots.length} Overpass spots (sufficient coverage)`);
             }
         }
         */
@@ -174,20 +176,20 @@ export class TripPlannerService {
             }
         }
 
-        console.log(`🔍 Sarvam returned ${sarvamSpots.length} spots, ${uniqueSpots.length} unique`);
+        this.logger.log(`🔍 Sarvam returned ${sarvamSpots.length} spots, ${uniqueSpots.length} unique`);
         let spots = uniqueSpots;
-        console.log(`✅ Using ${spots.length} Sarvam-discovered spots`);
+        this.logger.log(`✅ Using ${spots.length} Sarvam-discovered spots`);
 
-        console.log(`📍 Total spots from parallel fetch: ${spots.length}`);
+        this.logger.log(`📍 Total spots from parallel fetch: ${spots.length}`);
 
         // Fallback: Use local data if Overpass API fails or returns 0 results
         if (spots.length === 0) {
-            console.log('Using Fallback mechanisms...');
+            this.logger.log('Using Fallback mechanisms...');
 
             // 1. Try Hardcoded
             const fallbackSpots = this.getFallbackPlaces(destination, coords.lat, coords.lon);
             if (fallbackSpots.length > 0) {
-                console.log(`Found ${fallbackSpots.length} hardcoded fallback spots`);
+                this.logger.log(`Found ${fallbackSpots.length} hardcoded fallback spots`);
                 spots = fallbackSpots.map(p => ({
                     name: p.placeName,
                     category: p.category,
@@ -196,9 +198,9 @@ export class TripPlannerService {
                 }));
             } else {
                 // 2. Try LLM Discovery
-                console.log('Attempting Groq Discovery...');
+                this.logger.log('Attempting Groq Discovery...');
                 spots = await this.discoverPlacesWithGroq(destination);
-                console.log(`Groq discovered ${spots.length} places`);
+                this.logger.log(`Groq discovered ${spots.length} places`);
             }
         }
 
@@ -207,7 +209,7 @@ export class TripPlannerService {
             console.warn(`Could not find ANY spots for ${destination} even after fallbacks.`);
         }
 
-        console.log(`Proceeding with ${spots.length} places`);
+        this.logger.log(`Proceeding with ${spots.length} places`);
 
         // Convert to TripPlace and Pre-fill for Groq
         const initialPlaces: TripPlace[] = spots.map(s => ({
@@ -224,7 +226,7 @@ export class TripPlannerService {
         const enrichedPlaces = initialPlaces; // Use places as-is without Groq enrichment
 
         // 4 & 5. Fetch images from Wikipedia + Pixabay and city info
-        console.log('Fetching images and city info (Wikipedia + Pixabay)...');
+        this.logger.log('Fetching images and city info (Wikipedia + Pixabay)...');
 
         const [placesWithImages, cityWiki] = await Promise.all([
             this.enrichPlacesWithImages(enrichedPlaces, destination),
@@ -256,7 +258,7 @@ export class TripPlannerService {
 
         let routeGeometry = null;
         if (routeCoords.length >= 2) {
-            console.log('Fetching route geometry from OSRM...');
+            this.logger.log('Fetching route geometry from OSRM...');
             const routeData = await this.routingService.getRoute(routeCoords);
             if (routeData) {
                 routeGeometry = routeData.geometry;
@@ -264,7 +266,7 @@ export class TripPlannerService {
         }
 
 
-        console.log(`Created itinerary with ${itinerary.length} days. Route: ${routeGeometry ? 'Found' : 'None'}`);
+        this.logger.log(`Created itinerary with ${itinerary.length} days. Route: ${routeGeometry ? 'Found' : 'None'}`);
 
         const result = {
             destination,
@@ -279,7 +281,7 @@ export class TripPlannerService {
             data: result,
             expires: Date.now() + this.CACHE_TTL,
         });
-        console.log(`✅ Cached trip for ${destination} (expires in 30 min)`);
+        this.logger.log(`✅ Cached trip for ${destination} (expires in 30 min)`);
 
         return result;
     }
@@ -315,7 +317,7 @@ export class TripPlannerService {
             createdAt: now,
         });
 
-        console.log(`✅ Created share code: ${code} for ${trip.destination}`);
+        this.logger.log(`✅ Created share code: ${code} for ${trip.destination}`);
         return code;
     }
 
@@ -334,14 +336,14 @@ export class TripPlannerService {
             return null;
         }
 
-        console.log(`📥 Retrieved shared trip: ${code} - ${shared.trip.destination}`);
+        this.logger.log(`📥 Retrieved shared trip: ${code} - ${shared.trip.destination}`);
         return shared.trip;
     }
 
 
     // Use Wikipedia + Pixabay in parallel for place images (reliable and unlimited)
     private async enrichPlacesWithImages(places: TripPlace[], city: string): Promise<TripPlace[]> {
-        console.log('⚡ Fetching images from Wikipedia + Pixabay (parallel)...');
+        this.logger.log('⚡ Fetching images from Wikipedia + Pixabay (parallel)...');
         const placeNames = places.map(p => p.placeName);
 
         // Fetch from BOTH sources simultaneously
@@ -531,7 +533,7 @@ Return ONLY valid JSON in this format:
 
     async getPlaceInfo(name: string, city?: string) {
         try {
-            console.log(`📍 Fetching comprehensive place info for: ${name}${city ? ` in ${city}` : ''}`);
+            this.logger.log(`📍 Fetching comprehensive place info for: ${name}${city ? ` in ${city}` : ''}`);
 
             // Fetch Wikipedia info
             const wikiInfo = await this.wikipediaService.getPlaceInfo(name, city);
@@ -541,11 +543,11 @@ Return ONLY valid JSON in this format:
 
             // Try Pixabay as fallback if Wikipedia has no image
             if (!imageUrl) {
-                console.log(`🔍 Wikipedia image not found, trying Pixabay for ${name}`);
+                this.logger.log(`🔍 Wikipedia image not found, trying Pixabay for ${name}`);
                 const pixabayImage = await this.pixabayService.getPlaceImage(name, city);
                 if (pixabayImage) {
                     imageUrl = pixabayImage;
-                    console.log(`✅ Found Pixabay image for ${name}`);
+                    this.logger.log(`✅ Found Pixabay image for ${name}`);
                 }
             }
 
@@ -553,11 +555,11 @@ Return ONLY valid JSON in this format:
             let aiDescription = '';
             try {
                 const locationName = city ? `${name}, ${city}` : name;
-                console.log(`🤖 Fetching AI historical description for ${locationName}`);
+                this.logger.log(`🤖 Fetching AI historical description for ${locationName}`);
                 aiDescription = await this.sarvamService.getLocationContext(locationName);
-                console.log(`✅ Got AI description for ${name}`);
+                this.logger.log(`✅ Got AI description for ${name}`);
             } catch (aiError) {
-                console.log(`⚠️ Could not fetch AI description: ${aiError.message}`);
+                this.logger.log(`⚠️ Could not fetch AI description: ${aiError.message}`);
             }
 
             // Combine descriptions: Wikipedia extract + AI historical context
@@ -565,7 +567,7 @@ Return ONLY valid JSON in this format:
                 ? (description ? `${description}\n\n${aiDescription}` : aiDescription)
                 : description;
 
-            console.log(`✅ Comprehensive info gathered for ${name}`);
+            this.logger.log(`✅ Comprehensive info gathered for ${name}`);
             return {
                 title: wikiInfo?.title || name,
                 description: combinedDescription,
@@ -626,7 +628,7 @@ Return ONLY valid JSON in this format:
 
     // NEW: Discovery Fallback using LLM
     private async discoverPlacesWithGroq(destination: string): Promise<Array<{ name: string; category: string; lat: number; lon: number }>> {
-        console.log(`Using Groq to discover places for ${destination}...`);
+        this.logger.log(`Using Groq to discover places for ${destination}...`);
         try {
             const prompt = `List 20 MUST-VISIT famous tourist attractions in ${destination}, India.
 

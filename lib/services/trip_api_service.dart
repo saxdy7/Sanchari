@@ -53,10 +53,27 @@ class TripApiService {
           ),
         )
         ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) async {
+              // Add JWT token to all requests for authentication
+              final session = Supabase.instance.client.auth.currentSession;
+              if (session != null) {
+                options.headers['Authorization'] = 'Bearer ${session.accessToken}';
+                Logger.debug('Added auth token to request: ${options.path}');
+              }
+              return handler.next(options);
+            },
+            onError: (error, handler) {
+              Logger.error('API Error: ${error.message}', error);
+              return handler.next(error);
+            },
+          ),
+        )
+        ..interceptors.add(
           LogInterceptor(
             requestBody: false,
             responseBody: false,
-            logPrint: (obj) => debugPrint(obj.toString()),
+            logPrint: (obj) => Logger.debug(obj.toString()),
           ),
         );
 

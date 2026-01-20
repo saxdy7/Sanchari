@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 
 interface ItineraryItem {
@@ -19,6 +19,7 @@ interface DayPlan {
 
 @Injectable()
 export class GroqService {
+    private readonly logger = new Logger(GroqService.name);
     private readonly apiKey = process.env.GROQ_API_KEY;
     private readonly baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -60,7 +61,7 @@ export class GroqService {
             const content = response.data.choices[0].message.content;
             return this.parseItinerary(content);
         } catch (error) {
-            console.error('Groq API error:', error.response?.data || error.message);
+            this.logger.error('Groq API error', error.response?.data || error.message);
             throw new Error('Failed to generate itinerary');
         }
     }
@@ -110,7 +111,7 @@ Rules:
             const parsed = JSON.parse(cleaned);
             return parsed.days || [];
         } catch (error) {
-            console.error('Failed to parse itinerary:', content);
+            this.logger.error('Failed to parse itinerary', content);
             return [];
         }
     }
