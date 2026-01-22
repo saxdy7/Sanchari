@@ -76,19 +76,22 @@ class SpotDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
 
                     // Main image
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        width: double.infinity,
-                        height: 220,
-                        color: Colors.grey[200],
-                        child: CachedNetworkImage(
-                          imageUrl: spot.imageUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) =>
-                              const Center(child: CircularProgressIndicator()),
-                          errorWidget: (context, url, error) =>
-                              const Center(child: Icon(Icons.place, size: 64)),
+                    Hero(
+                      tag: spot.savedSpotId,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: double.infinity,
+                          height: 220,
+                          color: Colors.grey[200],
+                          child: CachedNetworkImage(
+                            imageUrl: spot.imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) =>
+                                const Center(child: CircularProgressIndicator()),
+                            errorWidget: (context, url, error) => const Center(
+                                child: Icon(Icons.place, size: 64)),
+                          ),
                         ),
                       ),
                     ),

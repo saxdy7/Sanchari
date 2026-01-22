@@ -416,27 +416,32 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              child: Container(
-                                                width: 240,
-                                                height: 160,
-                                                color: Colors.grey[200],
-                                                child: CachedNetworkImage(
-                                                  imageUrl: firstSpot.imageUrl,
-                                                  fit: BoxFit.cover,
-                                                  placeholder: (context, url) =>
-                                                      const Center(
-                                                        child:
-                                                            CircularProgressIndicator(),
-                                                      ),
-                                                  errorWidget:
-                                                      (context, url, error) =>
-                                                          const Icon(
-                                                            Icons.place,
-                                                            size: 48,
-                                                          ),
+                                            Hero(
+                                              tag: firstSpot.savedSpotId,
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                child: Container(
+                                                  width: 240,
+                                                  height: 160,
+                                                  color: Colors.grey[200],
+                                                  child: CachedNetworkImage(
+                                                    imageUrl:
+                                                        firstSpot.imageUrl,
+                                                    fit: BoxFit.cover,
+                                                    placeholder:
+                                                        (context, url) =>
+                                                            const Center(
+                                                              child:
+                                                                  CircularProgressIndicator(),
+                                                            ),
+                                                    errorWidget: (context, url,
+                                                            error) =>
+                                                        const Icon(
+                                                          Icons.place,
+                                                          size: 48,
+                                                        ),
+                                                  ),
                                                 ),
                                               ),
                                             ),
