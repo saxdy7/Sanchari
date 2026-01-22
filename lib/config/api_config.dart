@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ApiConfig {
   // 🌐 PRODUCTION: Set your Render.com URL here after deployment
   // Example: 'https://sanchari-backend.onrender.com'
-  static const String productionUrl = 'https://your-app-name.onrender.com';
+  static const String productionUrl = 'https://sanchari-xoxf.onrender.com';
 
   // 💻 DEVELOPMENT: Local backend URL
   static const String developmentUrl = kIsWeb
@@ -12,7 +12,7 @@ class ApiConfig {
       : 'http://192.168.31.156:3000'; // Mobile on same WiFi
 
   // Choose URL based on environment (change useProduction to true after deploying)
-  static const bool useProduction = false;
+  static const bool useProduction = true;
 
   static String get baseUrl => useProduction ? productionUrl : developmentUrl;
 
