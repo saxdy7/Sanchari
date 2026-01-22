@@ -49,6 +49,6 @@ async function bootstrap() {
   
   console.log(`✅ Backend running on http://0.0.0.0:${port}`);
   console.log(`📚 Swagger docs: http://0.0.0.0:${port}/api`);
-  console.log(`🔒 CORS enabled for: ${allowedOrigins.join(', ')}`);
+  console.log(`🔒 CORS enabled for all origins`);
 }
 bootstrap();
