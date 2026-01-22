@@ -13,6 +13,7 @@ interface DayPlan {
     places: ItineraryItem[];
 }
 export declare class GroqService {
+    private readonly logger;
     private readonly apiKey;
     private readonly baseUrl;
     generateItinerary(destination: string, days: number, preferences?: string[]): Promise<DayPlan[]>;

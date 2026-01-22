@@ -57,17 +57,19 @@ final savedSpotsProvider = StreamProvider.autoDispose<List<SavedSpot>>((
     return;
   }
 
+  // Create StreamController for real-time updates
+  final controller = StreamController<List<SavedSpot>>.broadcast();
+
   // Initial load
   final initialData = await dbService.getSavedSpots();
   Logger.debug('Initial load: ${initialData.length} spots');
-  yield _processSpotsData(initialData);
+  final initialSpots = _processSpotsData(initialData);
+  controller.add(initialSpots);
+  yield initialSpots;
 
-  // Create StreamController for real-time updates
-  final controller = StreamController<List<SavedSpot>>();
-
-  // Subscribe to real-time changes
-  final channel = Supabase.instance.client
-      .channel('saved_spots_changes')
+  // Subscribe to real-time changes on ALL relevant tables
+  final savedSpotsChannel = Supabase.instance.client
+      .channel('saved_spots_realtime_${user.id}')
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -78,22 +80,30 @@ final savedSpotsProvider = StreamProvider.autoDispose<List<SavedSpot>>((
           value: user.id,
         ),
         callback: (payload) async {
-          Logger.info('Real-time update detected: ${payload.eventType}');
-          final updatedData = await dbService.getSavedSpots();
-          Logger.success('Refreshed: ${updatedData.length} spots');
-          // Yield the updated data through the controller
-          controller.add(_processSpotsData(updatedData));
+          Logger.info(
+            '🔄 Real-time update: ${payload.eventType} on saved_spots',
+          );
+          try {
+            final updatedData = await dbService.getSavedSpots();
+            Logger.success('Refreshed: ${updatedData.length} spots');
+            final updatedSpots = _processSpotsData(updatedData);
+            controller.add(updatedSpots);
+          } catch (e) {
+            Logger.error('Error refreshing saved spots', e);
+          }
         },
       )
       .subscribe();
 
-  // Yield from the controller stream (real-time updates only, no polling!)
+  Logger.info('✅ Real-time subscription active for saved spots');
+
+  // Yield from the controller stream
   yield* controller.stream;
 
   // Cleanup on dispose
   ref.onDispose(() {
-    Logger.info('Cleaning up real-time subscription');
-    channel.unsubscribe();
+    Logger.info('🧹 Cleaning up real-time subscription');
+    savedSpotsChannel.unsubscribe();
     controller.close();
   });
 });
@@ -120,7 +130,9 @@ List<SavedSpot> _processSpotsData(List<Map<String, dynamic>> spotsData) {
 
       // Validate critical data before creating SavedSpot
       if (spot['latitude'] == null || spot['longitude'] == null) {
-        Logger.warning('Skipping spot with missing coordinates: ${spot['name']}');
+        Logger.warning(
+          'Skipping spot with missing coordinates: ${spot['name']}',
+        );
         continue;
       }
 

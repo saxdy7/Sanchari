@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var TripPlannerService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TripPlannerService = void 0;
 const common_1 = require("@nestjs/common");
@@ -22,7 +23,7 @@ const pixabay_service_1 = require("../pixabay/pixabay.service");
 const sarvam_service_1 = require("../sarvam/sarvam.service");
 const routing_service_1 = require("./routing.service");
 const axios_1 = __importDefault(require("axios"));
-let TripPlannerService = class TripPlannerService {
+let TripPlannerService = TripPlannerService_1 = class TripPlannerService {
     locationService;
     groqService;
     wikipediaService;
@@ -34,6 +35,7 @@ let TripPlannerService = class TripPlannerService {
     CACHE_TTL = 30 * 60 * 1000;
     sharedTrips = new Map();
     SHARE_TTL = 24 * 60 * 60 * 1000;
+    logger = new common_1.Logger(TripPlannerService_1.name);
     constructor(locationService, groqService, wikipediaService, pixabayService, sarvamService, routingService, configService) {
         this.locationService = locationService;
         this.groqService = groqService;
@@ -52,7 +54,7 @@ let TripPlannerService = class TripPlannerService {
                 }
             }
             if (cleanedCount > 0) {
-                console.log(`🧹 Cleaned up ${cleanedCount} expired cache entries`);
+                this.logger.log(`Cleaned up ${cleanedCount} expired cache entries`);
             }
         }, 10 * 60 * 1000);
     }
@@ -60,15 +62,15 @@ let TripPlannerService = class TripPlannerService {
         const cacheKey = `${destination.toLowerCase()}-${days}-${preferences.sort().join(',')}`;
         const cached = this.cache.get(cacheKey);
         if (cached && cached.expires > Date.now()) {
-            console.log(`✅ Cache HIT for ${destination}`);
+            this.logger.log(`Cache HIT for ${destination}`);
             return cached.data;
         }
-        console.log(`Generating trip for ${destination}, ${days} days`);
+        this.logger.log(`Generating trip for ${destination}, ${days} days`);
         const coords = await this.locationService.getCoordinates(destination);
         if (!coords) {
             throw new Error(`Could not find coordinates for ${destination}`);
         }
-        console.log('⚡ Fetching spots from Sarvam AI...');
+        this.logger.log('⚡ Fetching spots from Sarvam AI...');
         const sarvamSpots = await this.sarvamService.discoverTouristSpots(destination, preferences);
         const uniqueSpots = [];
         const seenNames = new Set();
@@ -85,15 +87,15 @@ let TripPlannerService = class TripPlannerService {
                 uniqueSpots.push(sarvamPlace);
             }
         }
-        console.log(`🔍 Sarvam returned ${sarvamSpots.length} spots, ${uniqueSpots.length} unique`);
+        this.logger.log(`🔍 Sarvam returned ${sarvamSpots.length} spots, ${uniqueSpots.length} unique`);
         let spots = uniqueSpots;
-        console.log(`✅ Using ${spots.length} Sarvam-discovered spots`);
-        console.log(`📍 Total spots from parallel fetch: ${spots.length}`);
+        this.logger.log(`✅ Using ${spots.length} Sarvam-discovered spots`);
+        this.logger.log(`📍 Total spots from parallel fetch: ${spots.length}`);
         if (spots.length === 0) {
-            console.log('Using Fallback mechanisms...');
+            this.logger.log('Using Fallback mechanisms...');
             const fallbackSpots = this.getFallbackPlaces(destination, coords.lat, coords.lon);
             if (fallbackSpots.length > 0) {
-                console.log(`Found ${fallbackSpots.length} hardcoded fallback spots`);
+                this.logger.log(`Found ${fallbackSpots.length} hardcoded fallback spots`);
                 spots = fallbackSpots.map(p => ({
                     name: p.placeName,
                     category: p.category,
@@ -102,15 +104,15 @@ let TripPlannerService = class TripPlannerService {
                 }));
             }
             else {
-                console.log('Attempting Groq Discovery...');
+                this.logger.log('Attempting Groq Discovery...');
                 spots = await this.discoverPlacesWithGroq(destination);
-                console.log(`Groq discovered ${spots.length} places`);
+                this.logger.log(`Groq discovered ${spots.length} places`);
             }
         }
         if (spots.length === 0) {
-            console.warn(`Could not find ANY spots for ${destination} even after fallbacks.`);
+            this.logger.warn(`Could not find ANY spots for ${destination} even after all fallbacks.`);
         }
-        console.log(`Proceeding with ${spots.length} places`);
+        this.logger.log(`Proceeding with ${spots.length} places`);
         const initialPlaces = spots.map(s => ({
             placeName: s.name,
             category: s.category,
@@ -120,7 +122,7 @@ let TripPlannerService = class TripPlannerService {
             longitude: s.lon,
         }));
         const enrichedPlaces = initialPlaces;
-        console.log('Fetching images and city info (Wikipedia + Pixabay)...');
+        this.logger.log('Fetching images and city info (Wikipedia + Pixabay)...');
         const [placesWithImages, cityWiki] = await Promise.all([
             this.enrichPlacesWithImages(enrichedPlaces, destination),
             this.wikipediaService.getCityInfo(destination),
@@ -142,13 +144,13 @@ let TripPlannerService = class TripPlannerService {
             .map(p => [p.longitude, p.latitude]);
         let routeGeometry = null;
         if (routeCoords.length >= 2) {
-            console.log('Fetching route geometry from OSRM...');
+            this.logger.log('Fetching route geometry from OSRM...');
             const routeData = await this.routingService.getRoute(routeCoords);
             if (routeData) {
                 routeGeometry = routeData.geometry;
             }
         }
-        console.log(`Created itinerary with ${itinerary.length} days. Route: ${routeGeometry ? 'Found' : 'None'}`);
+        this.logger.log(`Created itinerary with ${itinerary.length} days. Route: ${routeGeometry ? 'Found' : 'None'}`);
         const result = {
             destination,
             days,
@@ -160,7 +162,7 @@ let TripPlannerService = class TripPlannerService {
             data: result,
             expires: Date.now() + this.CACHE_TTL,
         });
-        console.log(`✅ Cached trip for ${destination} (expires in 30 min)`);
+        this.logger.log(`✅ Cached trip for ${destination} (expires in 30 min)`);
         return result;
     }
     generateShareCode() {
@@ -187,7 +189,7 @@ let TripPlannerService = class TripPlannerService {
             trip,
             createdAt: now,
         });
-        console.log(`✅ Created share code: ${code} for ${trip.destination}`);
+        this.logger.log(`✅ Created share code: ${code} for ${trip.destination}`);
         return code;
     }
     async getTripByShareCode(code) {
@@ -200,27 +202,28 @@ let TripPlannerService = class TripPlannerService {
             this.sharedTrips.delete(code);
             return null;
         }
-        console.log(`📥 Retrieved shared trip: ${code} - ${shared.trip.destination}`);
+        this.logger.log(`📥 Retrieved shared trip: ${code} - ${shared.trip.destination}`);
         return shared.trip;
     }
     async enrichPlacesWithImages(places, city) {
-        console.log('⚡ Fetching images from Wikipedia + Pixabay (parallel)...');
+        this.logger.log('⚡ Fetching images from Wikipedia...');
         const placeNames = places.map(p => p.placeName);
-        const [wikiResults, pixabayResults] = await Promise.allSettled([
-            this.wikipediaService.getMultiplePlaceInfo(placeNames, city),
-            this.pixabayService.getMultiplePlaceImages(placeNames, city),
-        ]);
-        const wikiMap = wikiResults.status === 'fulfilled' ? wikiResults.value : new Map();
-        const pixabayMap = pixabayResults.status === 'fulfilled' ? pixabayResults.value : new Map();
-        return places.map(place => {
+        const wikiMap = await this.wikipediaService.getMultiplePlaceInfo(placeNames, city);
+        this.logger.log(`✅ Wikipedia found ${wikiMap.size} images`);
+        const enrichedPlaces = await Promise.all(places.map(async (place) => {
             const wikiInfo = wikiMap.get(place.placeName);
-            const pixabayUrl = pixabayMap.get(place.placeName);
-            const imageUrl = wikiInfo?.imageUrl || pixabayUrl || undefined;
+            let imageUrl = wikiInfo?.imageUrl;
+            if (!imageUrl) {
+                this.logger.log(`🔍 Wikipedia image not found for ${place.placeName}, trying Pixabay...`);
+                const pixabayUrl = await this.pixabayService.getPlaceImage(place.placeName, city);
+                imageUrl = pixabayUrl || undefined;
+            }
             return {
                 ...place,
                 imageUrl,
             };
-        });
+        }));
+        return enrichedPlaces;
     }
     async enrichPlacesWithGroq(places, destination, days) {
         if (places.length === 0)
@@ -368,33 +371,33 @@ Return ONLY valid JSON in this format:
     }
     async getPlaceInfo(name, city) {
         try {
-            console.log(`📍 Fetching comprehensive place info for: ${name}${city ? ` in ${city}` : ''}`);
+            this.logger.log(`📍 Fetching comprehensive place info for: ${name}${city ? ` in ${city}` : ''}`);
             const wikiInfo = await this.wikipediaService.getPlaceInfo(name, city);
             let imageUrl = wikiInfo?.imageUrl || null;
             let description = wikiInfo?.extract || '';
             const pageUrl = wikiInfo?.pageUrl || null;
             if (!imageUrl) {
-                console.log(`🔍 Wikipedia image not found, trying Pixabay for ${name}`);
+                this.logger.log(`🔍 Wikipedia image not found, trying Pixabay for ${name}`);
                 const pixabayImage = await this.pixabayService.getPlaceImage(name, city);
                 if (pixabayImage) {
                     imageUrl = pixabayImage;
-                    console.log(`✅ Found Pixabay image for ${name}`);
+                    this.logger.log(`✅ Found Pixabay image for ${name}`);
                 }
             }
             let aiDescription = '';
             try {
                 const locationName = city ? `${name}, ${city}` : name;
-                console.log(`🤖 Fetching AI historical description for ${locationName}`);
+                this.logger.log(`🤖 Fetching AI historical description for ${locationName}`);
                 aiDescription = await this.sarvamService.getLocationContext(locationName);
-                console.log(`✅ Got AI description for ${name}`);
+                this.logger.log(`✅ Got AI description for ${name}`);
             }
             catch (aiError) {
-                console.log(`⚠️ Could not fetch AI description: ${aiError.message}`);
+                this.logger.log(`⚠️ Could not fetch AI description: ${aiError.message}`);
             }
             const combinedDescription = aiDescription
                 ? (description ? `${description}\n\n${aiDescription}` : aiDescription)
                 : description;
-            console.log(`✅ Comprehensive info gathered for ${name}`);
+            this.logger.log(`✅ Comprehensive info gathered for ${name}`);
             return {
                 title: wikiInfo?.title || name,
                 description: combinedDescription,
@@ -449,7 +452,7 @@ Return ONLY valid JSON in this format:
         return destinationsWithImages;
     }
     async discoverPlacesWithGroq(destination) {
-        console.log(`Using Groq to discover places for ${destination}...`);
+        this.logger.log(`Using Groq to discover places for ${destination}...`);
         try {
             const prompt = `List 20 MUST-VISIT famous tourist attractions in ${destination}, India.
 
@@ -502,7 +505,7 @@ Return JSON ONLY:
     }
 };
 exports.TripPlannerService = TripPlannerService;
-exports.TripPlannerService = TripPlannerService = __decorate([
+exports.TripPlannerService = TripPlannerService = TripPlannerService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [location_service_1.LocationService,
         groq_service_1.GroqService,

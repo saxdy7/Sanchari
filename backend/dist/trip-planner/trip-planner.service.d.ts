@@ -43,6 +43,7 @@ export declare class TripPlannerService {
     private readonly CACHE_TTL;
     private sharedTrips;
     private readonly SHARE_TTL;
+    private readonly logger;
     constructor(locationService: LocationService, groqService: GroqService, wikipediaService: WikipediaService, pixabayService: PixabayService, sarvamService: SarvamService, routingService: RoutingService, configService: ConfigService);
     generateTrip(destination: string, days: number, preferences?: string[]): Promise<TripResponse>;
     private generateShareCode;

@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -37,43 +37,18 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }',
   });
 
-  // CORS configuration - secure for production
-  const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL || 'https://yourdomain.com']
-    : [
-      'http://localhost:3000',
-      'http://localhost:8080',
-      'http://127.0.0.1:3000',
-      'http://localhost:50515', // Flutter web default port
-      'http://localhost:5000',
-      'http://localhost:5001',
-    ];
-
+  // CORS configuration - Allow mobile apps to connect
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, Postman, etc)
-      if (!origin) return callback(null, true);
-
-      // Check if origin starts with allowed localhost
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        return callback(null, true);
-      }
-
-      // Check if origin is in allowed list
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      callback(new Error('Not allowed by CORS'));
-    },
+    origin: true, // Allow all origins for mobile app
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`✅ Backend running on http://localhost:${port}`);
-  console.log(`📚 Swagger docs available at http://localhost:${port}/api`);
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`✅ Backend running on http://0.0.0.0:${port}`);
+  console.log(`📚 Swagger docs: http://0.0.0.0:${port}/api`);
   console.log(`🔒 CORS enabled for: ${allowedOrigins.join(', ')}`);
 }
 bootstrap();

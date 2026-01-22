@@ -12,6 +12,8 @@ interface WikipediaResult {
 export class WikipediaService {
     private readonly logger = new Logger(WikipediaService.name);
     private readonly searchUrl = 'https://en.wikipedia.org/w/api.php';
+    private readonly timeout = 10000; // 10 seconds timeout
+    private readonly maxRetries = 2;
 
     async getPlaceInfo(placeName: string, city?: string): Promise<WikipediaResult | null> {
         try {
@@ -34,6 +36,7 @@ export class WikipediaService {
                 headers: {
                     'User-Agent': 'Sanchari/1.0 (https://sanchari.app; contact@sanchari.app) travel-planner',
                 },
+                timeout: this.timeout,
             });
 
             const pages = response.data.query?.pages;
@@ -53,7 +56,11 @@ export class WikipediaService {
                 pageUrl: page.fullurl || '',
             };
         } catch (error) {
-            this.logger.error(`Wikipedia error for "${placeName}": ${error.message}`);
+            if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+                this.logger.warn(`Wikipedia timeout for "${placeName}" - skipping`);
+            } else {
+                this.logger.error(`Wikipedia error for "${placeName}": ${error.message}`);
+            }
             return null;
         }
     }
@@ -73,6 +80,7 @@ export class WikipediaService {
                 headers: {
                     'User-Agent': 'Sanchari/1.0 (https://sanchari.app; contact@sanchari.app) travel-planner',
                 },
+                timeout: this.timeout,
             });
 
             const searchResults = searchResponse.data.query?.search;
@@ -99,6 +107,7 @@ export class WikipediaService {
                 headers: {
                     'User-Agent': 'Sanchari/1.0 (https://sanchari.app; contact@sanchari.app) travel-planner',
                 },
+                timeout: this.timeout,
             });
 
             const pages = pageResponse.data.query?.pages;

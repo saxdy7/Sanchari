@@ -204,9 +204,9 @@ export class TripPlannerService {
             }
         }
 
-        // Final Safety Check: If still 0 spots, return empty (or throw)
+        // Absolute Final Check
         if (spots.length === 0) {
-            console.warn(`Could not find ANY spots for ${destination} even after fallbacks.`);
+            this.logger.warn(`Could not find ANY spots for ${destination} even after all fallbacks.`);
         }
 
         this.logger.log(`Proceeding with ${spots.length} places`);
@@ -341,32 +341,36 @@ export class TripPlannerService {
     }
 
 
-    // Use Wikipedia + Pixabay in parallel for place images (reliable and unlimited)
+    // Use Wikipedia + Pixabay for place images
     private async enrichPlacesWithImages(places: TripPlace[], city: string): Promise<TripPlace[]> {
-        this.logger.log('⚡ Fetching images from Wikipedia + Pixabay (parallel)...');
+        this.logger.log('⚡ Fetching images from Wikipedia...');
         const placeNames = places.map(p => p.placeName);
 
-        // Fetch from BOTH sources simultaneously
-        const [wikiResults, pixabayResults] = await Promise.allSettled([
-            this.wikipediaService.getMultiplePlaceInfo(placeNames, city),
-            this.pixabayService.getMultiplePlaceImages(placeNames, city),
-        ]);
+        // Fetch Wikipedia images first
+        const wikiMap = await this.wikipediaService.getMultiplePlaceInfo(placeNames, city);
+        this.logger.log(`✅ Wikipedia found ${wikiMap.size} images`);
 
-        const wikiMap = wikiResults.status === 'fulfilled' ? wikiResults.value : new Map();
-        const pixabayMap = pixabayResults.status === 'fulfilled' ? pixabayResults.value : new Map();
+        // Enrich with Wikipedia images and fallback to Pixabay if needed
+        const enrichedPlaces = await Promise.all(
+            places.map(async (place) => {
+                const wikiInfo = wikiMap.get(place.placeName);
+                let imageUrl = wikiInfo?.imageUrl;
 
-        return places.map(place => {
-            const wikiInfo = wikiMap.get(place.placeName);
-            const pixabayUrl = pixabayMap.get(place.placeName);
+                // Fallback to Pixabay if Wikipedia has no image
+                if (!imageUrl) {
+                    this.logger.log(`🔍 Wikipedia image not found for ${place.placeName}, trying Pixabay...`);
+                    const pixabayUrl = await this.pixabayService.getPlaceImage(place.placeName, city);
+                    imageUrl = pixabayUrl || undefined;
+                }
 
-            // Priority: Wikipedia first (historical accuracy), then Pixabay (high quality)
-            const imageUrl = wikiInfo?.imageUrl || pixabayUrl || undefined;
+                return {
+                    ...place,
+                    imageUrl,
+                };
+            })
+        );
 
-            return {
-                ...place,
-                imageUrl,
-            };
-        });
+        return enrichedPlaces;
     }
 
     // Use Groq to generate rich descriptions for places

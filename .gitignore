@@ -53,3 +53,12 @@ backend/.env.local
 *.key
 *.pem
 secrets/
+
+# Backend Node.js
+backend/node_modules/
+backend/dist/
+backend/*.log
+
+# OS Files
+.DS_Store
+Thumbs.db

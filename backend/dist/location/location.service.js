@@ -11,14 +11,16 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var LocationService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LocationService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const axios_1 = __importDefault(require("axios"));
-let LocationService = class LocationService {
+let LocationService = LocationService_1 = class LocationService {
     configService;
     nominatimUrl = 'https://nominatim.openstreetmap.org';
+    logger = new common_1.Logger(LocationService_1.name);
     constructor(configService) {
         this.configService = configService;
     }
@@ -63,7 +65,7 @@ let LocationService = class LocationService {
                 },
             });
             if (response.data.length > 0) {
-                console.log(`Found coordinates for ${placeName}: ${response.data[0].lat}, ${response.data[0].lon}`);
+                this.logger.log(`Found coordinates for ${placeName}: ${response.data[0].lat}, ${response.data[0].lon}`);
                 return {
                     lat: parseFloat(response.data[0].lat),
                     lon: parseFloat(response.data[0].lon),
@@ -149,7 +151,7 @@ let LocationService = class LocationService {
     }
 };
 exports.LocationService = LocationService;
-exports.LocationService = LocationService = __decorate([
+exports.LocationService = LocationService = LocationService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_1.ConfigService])
 ], LocationService);

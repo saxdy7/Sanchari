@@ -10,6 +10,7 @@ export interface LocationResult {
 export declare class LocationService {
     private configService;
     private readonly nominatimUrl;
+    private readonly logger;
     constructor(configService: ConfigService);
     searchLocations(query: string): Promise<LocationResult[]>;
     getCoordinates(placeName: string): Promise<{

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
@@ -28,6 +28,7 @@ interface NominatimResult {
 @Injectable()
 export class LocationService {
     private readonly nominatimUrl = 'https://nominatim.openstreetmap.org';
+    private readonly logger = new Logger(LocationService.name);
 
     constructor(private configService: ConfigService) { }
 

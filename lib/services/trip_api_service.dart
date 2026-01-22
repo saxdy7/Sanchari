@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sarvam_ai_service.dart';
 import '../config/api_config.dart';
+import '../utils/logger.dart';
 
 // Provider
 final tripApiServiceProvider = Provider<TripApiService>((ref) {
@@ -58,7 +59,8 @@ class TripApiService {
               // Add JWT token to all requests for authentication
               final session = Supabase.instance.client.auth.currentSession;
               if (session != null) {
-                options.headers['Authorization'] = 'Bearer ${session.accessToken}';
+                options.headers['Authorization'] =
+                    'Bearer ${session.accessToken}';
                 Logger.debug('Added auth token to request: ${options.path}');
               }
               return handler.next(options);

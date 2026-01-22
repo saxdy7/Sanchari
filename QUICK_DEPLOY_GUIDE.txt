@@ -1,0 +1,96 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║          🚀 SANCHARI - QUICK DEPLOYMENT REFERENCE               ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+📦 STEP 1: PUSH TO GITHUB (5 minutes)
+──────────────────────────────────────────────────────
+cd d:\Sanchari\backend
+git init
+git add .
+git commit -m "Deploy backend"
+git remote add origin https://github.com/YOUR_USERNAME/sanchari-backend.git
+git push -u origin main
+
+
+☁️ STEP 2: DEPLOY ON RENDER (10 minutes)
+──────────────────────────────────────────────────────
+1. Go to: https://render.com
+2. New + → Web Service → Connect GitHub repo
+3. Settings:
+   Build: npm install && npm run build
+   Start: npm run start:prod
+4. Add Environment Variables (from backend/.env):
+   - NODE_ENV = production
+   - PORT = 3000
+   - SUPABASE_URL = ...
+   - SUPABASE_ANON_KEY = ...
+   - GROQ_API_KEY = ...
+   - SARVAM_API_KEY = ...
+   - PIXABAY_API_KEY = ...
+5. Click "Create Web Service"
+6. Wait for deployment (~10 min)
+7. Copy your URL: https://your-app.onrender.com
+
+
+📱 STEP 3: UPDATE FLUTTER APP (2 minutes)
+──────────────────────────────────────────────────────
+Open: lib/config/api_config.dart
+
+Change:
+  static const String productionUrl = 'https://your-app.onrender.com';
+  static const bool useProduction = true;
+
+
+🔨 STEP 4: BUILD APK (10 minutes)
+──────────────────────────────────────────────────────
+cd d:\Sanchari
+flutter build apk --release
+
+APK location:
+build/app/outputs/flutter-apk/app-release.apk
+
+
+📲 STEP 5: INSTALL ON PHONE (2 minutes)
+──────────────────────────────────────────────────────
+Method 1: WhatsApp
+- Send app-release.apk to yourself
+- Download on phone → Install
+
+Method 2: Google Drive
+- Upload APK to Drive
+- Download from phone → Install
+
+
+✅ DONE! APP WORKS WITHOUT LAPTOP!
+══════════════════════════════════════════════════════
+
+
+🔧 QUICK TROUBLESHOOTING
+──────────────────────────────────────────────────────
+App shows "Network Error":
+  → Wait 30 seconds (backend waking up from sleep)
+  → Check internet connection
+
+Backend not working:
+  → Check Render.com dashboard → Logs
+  → Verify environment variables
+
+First request slow:
+  → Normal! Free tier sleeps after 15 min
+  → Next requests will be fast
+
+
+💡 TIPS
+──────────────────────────────────────────────────────
+• Free tier sleeps = First request slow (30 sec)
+• Keep awake: Use uptimerobot.com (free)
+• Always-on: Upgrade Render ($7/mo) or Railway ($5/mo)
+• Update code: Just git push, Render auto-deploys!
+
+
+📞 NEED HELP?
+──────────────────────────────────────────────────────
+Read: COMPLETE_MOBILE_SETUP.md (detailed guide)
+Logs: Render.com → Your Service → Logs tab

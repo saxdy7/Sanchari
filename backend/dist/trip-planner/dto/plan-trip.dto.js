@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SearchDestinationDto = exports.PlanTripDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
+const swagger_1 = require("@nestjs/swagger");
 class PlanTripDto {
     destination;
     days;
@@ -19,18 +20,34 @@ class PlanTripDto {
 }
 exports.PlanTripDto = PlanTripDto;
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Destination city name in India',
+        example: 'Jaipur',
+        type: String,
+    }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.Length)(1, 100),
     __metadata("design:type", String)
 ], PlanTripDto.prototype, "destination", void 0);
 __decorate([
-    (0, class_transformer_1.Transform)(({ value }) => parseInt(value, 10)),
+    (0, swagger_1.ApiProperty)({
+        description: 'Number of days for the trip',
+        example: 3,
+        minimum: 1,
+        maximum: 14,
+        type: Number,
+    }),
+    (0, class_transformer_1.Type)(() => Number),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
-    (0, class_validator_1.Max)(30),
+    (0, class_validator_1.Max)(14),
     __metadata("design:type", Number)
 ], PlanTripDto.prototype, "days", void 0);
 __decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Comma-separated list of preferences (Heritage, Food, Nature, Adventure, etc.)',
+        example: 'Heritage,Food',
+        type: String,
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
@@ -40,8 +57,12 @@ class SearchDestinationDto {
 }
 exports.SearchDestinationDto = SearchDestinationDto;
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Search query for destination',
+        example: 'Mumbai',
+        type: String,
+    }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.Length)(1, 100),
     __metadata("design:type", String)
 ], SearchDestinationDto.prototype, "q", void 0);
 //# sourceMappingURL=plan-trip.dto.js.map

@@ -15,6 +15,7 @@ const location_module_1 = require("../location/location.module");
 const groq_module_1 = require("../groq/groq.module");
 const wikipedia_module_1 = require("../wikipedia/wikipedia.module");
 const pixabay_module_1 = require("../pixabay/pixabay.module");
+const google_ai_module_1 = require("../google-ai/google-ai.module");
 const sarvam_module_1 = require("../sarvam/sarvam.module");
 const routing_service_1 = require("./routing.service");
 let TripPlannerModule = class TripPlannerModule {
@@ -22,7 +23,7 @@ let TripPlannerModule = class TripPlannerModule {
 exports.TripPlannerModule = TripPlannerModule;
 exports.TripPlannerModule = TripPlannerModule = __decorate([
     (0, common_1.Module)({
-        imports: [config_1.ConfigModule, location_module_1.LocationModule, groq_module_1.GroqModule, wikipedia_module_1.WikipediaModule, pixabay_module_1.PixabayModule, sarvam_module_1.SarvamModule],
+        imports: [config_1.ConfigModule, location_module_1.LocationModule, groq_module_1.GroqModule, wikipedia_module_1.WikipediaModule, pixabay_module_1.PixabayModule, google_ai_module_1.GoogleAIModule, sarvam_module_1.SarvamModule],
         controllers: [trip_planner_controller_1.TripPlannerController],
         providers: [trip_planner_service_1.TripPlannerService, routing_service_1.RoutingService],
     })

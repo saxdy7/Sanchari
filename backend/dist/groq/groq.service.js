@@ -8,11 +8,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var GroqService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GroqService = void 0;
 const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
-let GroqService = class GroqService {
+let GroqService = GroqService_1 = class GroqService {
+    logger = new common_1.Logger(GroqService_1.name);
     apiKey = process.env.GROQ_API_KEY;
     baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
     async generateItinerary(destination, days, preferences = []) {
@@ -44,7 +46,7 @@ let GroqService = class GroqService {
             return this.parseItinerary(content);
         }
         catch (error) {
-            console.error('Groq API error:', error.response?.data || error.message);
+            this.logger.error('Groq API error', error.response?.data || error.message);
             throw new Error('Failed to generate itinerary');
         }
     }
@@ -90,13 +92,13 @@ Rules:
             return parsed.days || [];
         }
         catch (error) {
-            console.error('Failed to parse itinerary:', content);
+            this.logger.error('Failed to parse itinerary', content);
             return [];
         }
     }
 };
 exports.GroqService = GroqService;
-exports.GroqService = GroqService = __decorate([
+exports.GroqService = GroqService = GroqService_1 = __decorate([
     (0, common_1.Injectable)()
 ], GroqService);
 //# sourceMappingURL=groq.service.js.map
